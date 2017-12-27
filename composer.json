@@ -1,0 +1,22 @@
+{
+  "name": "pbergman/curl-multi",
+  "type": "library",
+  "description": "a simple curl wrapper for the multi handler",
+  "keywords": ["curl","symfony","console","array","tree"],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Philip Bergman",
+      "email": "pbergman@live.nl"
+    }
+  ],
+  "require": {
+    "php": ">=5.6.0",
+    "ext-curl": "*"
+  },
+  "autoload": {
+    "psr-0": {
+      "PBergman": "src"
+    }
+  }
+}
