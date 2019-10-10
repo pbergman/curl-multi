@@ -66,13 +66,17 @@ constructor of MultiHandler accepts request so you could register your request o
 ))->wait();
 ```
 
+#####  setOptions(array $options) :bool
+
+set options for multi handler
+
+#####  addOption(int $key, $value) :bool
+
+set option for multi handler
+
 ##### add(RequestInterface $request): MultiHandler
 
 add request to defined instance.
-
-##### close(): void
-
-close the multi handle and all registered curl handles.
 
 ##### defer(): void
 
