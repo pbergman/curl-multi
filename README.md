@@ -27,16 +27,18 @@ $handler = new MultiHandler(
     ])
 );
 
-// register cleanup
-$handler->defer();
-
-foreach ($handler->getResponse() as $response) {
-    printf(
-        "request '%s' finished with code %d in %0.2fs\n",
-        $response->getInfo(CURLINFO_EFFECTIVE_URL),
-        $response->getInfo(CURLINFO_RESPONSE_CODE),
-        $response->getInfo(CURLINFO_TOTAL_TIME)
-    );
+try {
+    foreach ($handler->getResponse() as $response) {
+        printf(
+            "request '%s' finished with code %d in %0.2fs\n",
+            $response->getInfo(CURLINFO_EFFECTIVE_URL),
+            $response->getInfo(CURLINFO_RESPONSE_CODE),
+            $response->getInfo(CURLINFO_TOTAL_TIME)
+        );
+    }
+} finally {
+    // register cleanup
+    $handler->close();
 }
 ```
 

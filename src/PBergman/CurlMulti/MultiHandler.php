@@ -3,25 +3,20 @@
  * @author    Philip Bergman <pbergman@live.nl>
  * @copyright Philip Bergman
  */
+declare(strict_types=1);
+
 namespace PBergman\CurlMulti;
 
 use PBergman\CurlMulti\Exception;
 
-/**
- * Class MultiHandler
- *
- * @package PBergman\CurlMulti
- */
-class MultiHandler
+class MultiHandler implements MultiHandlerInterface
 {
     /** @var resource  */
-    protected $handle;
+    private $handle;
     /** @var array  */
-    protected $requests = [];
+    private $requests = [];
 
     /**
-     * MultiHandler constructor.
-     *
      * @param RequestInterface[] $request
      *
      * @throws Exception\CurlErrorException
@@ -38,16 +33,7 @@ class MultiHandler
         }
     }
 
-    /**
-     * @param RequestInterface $request
-     *
-     * @throws Exception\CurlErrorException
-     * @throws Exception\CurlInitException
-     * @throws Exception\CurlSetOptException
-     *
-     * @return $this
-     */
-    public function add(RequestInterface $request) :MultiHandler
+    public function add(RequestInterface $request) :MultiHandlerInterface
     {
         if (false === ($handle = curl_init())) {
             throw new Exception\CurlInitException();
@@ -61,14 +47,11 @@ class MultiHandler
             throw new Exception\CurlErrorException($status);
         }
 
-        $this->requests[] = [$handle, $request];
+        $this->requests[] = [$handle, $request, true];
 
         return $this;
     }
 
-    /**
-     * @throws Exception\CurlMultiInitException
-     */
     public function init() :void
     {
         if (null === $this->handle && false === ($this->handle = curl_multi_init())) {
@@ -80,17 +63,12 @@ class MultiHandler
     {
         curl_multi_close($this->handle);
         $this->handle = null;
-        foreach ($this->requests as [$handle,]) {
+        foreach (array_column($this->requests, 0) as $handle) {
             curl_close($handle);
         }
         $this->requests = [];
     }
 
-    /**
-     * @return \Generator|ResponseInterface[]
-     * @throws Exception\CurlErrorException
-     * @throws Exception\CurlException
-     */
     public function getResponse() :\Generator
     {
         if (null === $this->handle) {
@@ -107,7 +85,14 @@ class MultiHandler
             if (CURLE_OK == $status = curl_multi_exec($this->handle, $active)) {
                 while (($info = curl_multi_info_read($this->handle)) && CURLMSG_DONE === $info['msg']) {
                     curl_multi_remove_handle($this->handle, $info['handle']);
-                    yield $this->getRequest($info['handle'])->handle($info['result'], $info['handle']);
+
+                    if (false === $index = array_search($info['handle'], array_column($this->requests, 0), true)) {
+                        throw new Exception\CurlException('Unexpected handler ' . $info['handle']);
+                    }
+
+                    $this->requests[2] = false;
+
+                    yield $this->requests[1]->handle($info['result'], $info['handle']);
                 }
             } elseif (CURLM_CALL_MULTI_PERFORM !== $status) {
                 throw new Exception\CurlErrorException($status);
@@ -115,11 +100,6 @@ class MultiHandler
         } while ($status === CURLM_CALL_MULTI_PERFORM || $active);
     }
 
-    /**
-     * @return array|ResponseInterface[]
-     * @throws Exception\CurlErrorException
-     * @throws Exception\CurlException
-     */
     public function wait() :array
     {
         return iterator_to_array($this->getResponse());
@@ -135,17 +115,34 @@ class MultiHandler
         return true;
     }
 
+    public function free(): void
+    {
+        $requests = [];
+
+        foreach ($this->requests as [$handler, $request, $status]) {
+            if ($status) {
+                $requests[] = [$handler, $request, $status];
+            } else {
+                if (is_resource($handler)) {
+                    curl_close($handler);
+                }
+            }
+        }
+
+        $this->requests = $requests;
+    }
+
     public function setOption(int $key, $value) :bool
     {
         return curl_multi_setopt($this->handle , $key , $value);
     }
 
-    /**
-     * @param resource $handle
-     * @return RequestInterface
-     */
-    protected function getRequest($handle) :RequestInterface
+    protected function getRequestIndex($handle) :int
     {
-        return $this->requests[array_search($handle, array_column($this->requests, 0), true)][1];
+        if (false !== $index = array_search($handle, array_column($this->requests, 0), true)) {
+            return $index;
+        }
+
+        return -1;
     }
 }

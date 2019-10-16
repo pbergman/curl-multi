@@ -3,13 +3,10 @@
  * @author    Philip Bergman <pbergman@live.nl>
  * @copyright Philip Bergman
  */
+declare(strict_types=1);
+
 namespace PBergman\CurlMulti;
 
-/**
- * Class Response
- *
- * @package PBergman\CurlMulti
- */
 class Response implements ResponseInterface
 {
     /** @var RequestInterface  */
@@ -38,7 +35,7 @@ class Response implements ResponseInterface
      */
     public function getInfo($opt = null)
     {
-        return (is_null($opt)) ? curl_getinfo($this->handle) : curl_getinfo($this->handle, $opt);
+        return (null === $opt) ? curl_getinfo($this->handle) : curl_getinfo($this->handle, $opt);
     }
 
     /**
