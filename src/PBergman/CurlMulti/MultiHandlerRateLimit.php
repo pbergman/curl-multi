@@ -32,32 +32,44 @@ class MultiHandlerRateLimit extends MultiHandler
 
     public function getResponse(): \Generator
     {
-        $ref = array_fill(0, $this->max, microtime(true) - $this->per);
+        $timeout = array_fill(0, $this->max, microtime(true) - $this->per);
+
         while (false === $this->queue->isEmpty()) {
-            $sleep = null;
+            $total = count($this->queue);
             $now = microtime(true);
-            $process = false;
-            foreach ($ref as $i => $wait) {
+            $free = [];
+            $sleep = null;
+
+            foreach ($timeout as $i => $wait) {
                 if ($wait < $now) {
-                    parent::add($this->queue->dequeue());
-                    $ref[$i] = microtime(true) + $this->per;
-                    $process = true;
-                    if (null === $sleep) {
-                        $sleep = $ref[$i];
-                    }
-                } else {
-                    if (null === $sleep || $sleep > $wait) {
-                        $sleep = $wait;
-                    }
+                    $free[] = $i;
+                    $total--;
+                }
+                if (0 === $total) {
+                    break;
                 }
             }
-            if ($process) {
+
+            foreach ($free as $index) {
+                parent::add($this->queue->dequeue());
+            }
+
+            foreach ($timeout as $i => &$wait) {
+                if (in_array($i, $free)) {
+                    $wait = $now;
+                } else {
+                    $sleep = $wait;
+                }
+            }
+
+            if (count($free) > 0) {
                 foreach(parent::getResponse() as $response) {
                     yield $response;
                 }
             }
-            if (microtime(true) > $sleep) {
-                usleep((microtime(true)-$sleep)*1000000);
+
+            if ($total > 0 && microtime(true) > $sleep) {
+                usleep((int)(microtime(true)-$sleep)*1000000);
             }
         }
     }

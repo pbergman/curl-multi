@@ -90,9 +90,9 @@ class MultiHandler implements MultiHandlerInterface
                         throw new Exception\CurlException('Unexpected handler ' . $info['handle']);
                     }
 
-                    $this->requests[2] = false;
+                    $this->requests[$index][2] = false;
 
-                    yield $this->requests[1]->handle($info['result'], $info['handle']);
+                    yield $this->requests[$index][1]->handle($info['result'], $info['handle']);
                 }
             } elseif (CURLM_CALL_MULTI_PERFORM !== $status) {
                 throw new Exception\CurlErrorException($status);
